@@ -1,20 +1,43 @@
-const sqlite3 = require('sqlite3').verbose();
-const dbPath = 'uptimekit.db';
+const sqlite3 = require("sqlite3").verbose();
+const dbPath = "uptimekit.db";
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Error opening database:', err.message);
-    console.error('Current working directory:', process.cwd());
+    console.error("Error opening database:", err.message);
+    console.error("Current working directory:", process.cwd());
   } else {
-    console.log('Connected to the SQLite database.');
+    console.log("Connected to the SQLite database.");
   }
 });
 
-db.run('PRAGMA foreign_keys = ON');
+db.run("PRAGMA foreign_keys = ON");
 
 // Initialize database tables
 db.serialize(() => {
-  db.run(`
+  db.run(
+    `
+    CREATE TABLE IF NOT EXISTS Users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      login_id TEXT NOT NULL,
+      password TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT DEFAULT 'user',
+      created_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(login_id, email)
+    )
+  `,
+    (err) => {
+      if (err) {
+        console.error("Error creating table:", err.message);
+      } else {
+        console.log("Monitors table ready.");
+      }
+    }
+  );
+
+  db.run(
+    `
     CREATE TABLE IF NOT EXISTS monitors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -24,51 +47,67 @@ db.serialize(() => {
       response_time INTEGER DEFAULT 0,
       last_checked DATETIME DEFAULT (datetime('now')),
       paused INTEGER DEFAULT 0,
+      created_by INTEGER,
       UNIQUE(url, type)
     )
-  `, (err) => {
-    if (err) {
-      console.error('Error creating table:', err.message);
-    } else {
-      console.log('Monitors table ready.');
+  `,
+    (err) => {
+      if (err) {
+        console.error("Error creating table:", err.message);
+      } else {
+        console.log("Monitors table ready.");
+      }
     }
-  });
+  );
 
-  db.run(`
+  db.run(
+    `
     ALTER TABLE monitors ADD COLUMN paused INTEGER DEFAULT 0
-  `, (err) => {
-    if (err && err.code !== 'SQLITE_ERROR') {
-      console.error('Error adding paused column:', err.message);
+  `,
+    (err) => {
+      if (err && err.code !== "SQLITE_ERROR") {
+        console.error("Error adding paused column:", err.message);
+      }
     }
-  });
+  );
 
-  db.run(`
+  db.run(
+    `
     ALTER TABLE monitors ADD COLUMN type TEXT DEFAULT 'http'
-  `, (err) => {
-    if (err && err.code !== 'SQLITE_ERROR') {
-      console.error('Error adding type column:', err.message);
+  `,
+    (err) => {
+      if (err && err.code !== "SQLITE_ERROR") {
+        console.error("Error adding type column:", err.message);
+      }
     }
-  });
+  );
 
-  db.run(`
+  db.run(
+    `
     ALTER TABLE monitors ADD COLUMN favicon TEXT
-  `, (err) => {
-    if (err && err.code !== 'SQLITE_ERROR') {
-      console.error('Error adding favicon column:', err.message);
+  `,
+    (err) => {
+      if (err && err.code !== "SQLITE_ERROR") {
+        console.error("Error adding favicon column:", err.message);
+      }
     }
-  });
+  );
 
-  db.run(`
+  db.run(
+    `
     UPDATE monitors SET type = 'http' WHERE type IS NULL
-  `, (err) => {
-    if (err) {
-      console.error('Error updating monitor types:', err.message);
-    } else {
-      console.log('Monitor types updated.');
+  `,
+    (err) => {
+      if (err) {
+        console.error("Error updating monitor types:", err.message);
+      } else {
+        console.log("Monitor types updated.");
+      }
     }
-  });
+  );
 
-  db.run(`
+  db.run(
+    `
     CREATE TABLE IF NOT EXISTS monitor_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       monitor_id INTEGER NOT NULL,
@@ -78,50 +117,118 @@ db.serialize(() => {
       checked_at DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY(monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
     )
-  `, (err) => {
-    if (err) {
-      console.error('Error creating history table:', err.message);
-    } else {
-      console.log('Monitor history table created or already exists.');
+  `,
+    (err) => {
+      if (err) {
+        console.error("Error creating history table:", err.message);
+      } else {
+        console.log("Monitor history table created or already exists.");
+      }
+    }
+  );
+
+  // Check if admin user exists, create if not
+  db.get("SELECT COUNT(*) as count FROM Users", (err, row) => {
+    if (!err && row && row.count === 0) {
+      const bcrypt = require("bcryptjs");
+      const adminPassword = bcrypt.hashSync("admin123", 10);
+      db.run(
+        "INSERT INTO Users (name, login_id, password, email, role) VALUES (?, ?, ?, ?, ?)",
+        ["Admin", "admin", adminPassword, "admin@uptimekit.local", "admin"],
+        (err) => {
+          if (!err) {
+            console.log("Default admin user created.");
+          }
+        }
+      );
     }
   });
 });
 
 // Get all monitors
 function getAllMonitors(callback) {
-  db.all('SELECT * FROM monitors ORDER BY id', callback);
+  db.all("SELECT * FROM monitors ORDER BY id", callback);
+}
+
+// Get monitors filtered by role/user from the database
+function getMonitorsForUser(role, userId, callback) {
+  if (role === "admin") {
+    db.all("SELECT * FROM monitors ORDER BY id", callback);
+  } else {
+    db.all(
+      "SELECT * FROM monitors WHERE created_by = ? ORDER BY id",
+      [userId],
+      callback
+    );
+  }
 }
 
 // Add a new monitor
-function addMonitor(name, url, type = 'http', callback) {
-  const stmt = db.prepare('INSERT INTO monitors (name, url, type, favicon) VALUES (?, ?, ?, NULL)');
-  stmt.run([name, url, type], function(err) {
+function addMonitor(name, url, type = "http", createdBy, callback) {
+  const stmt = db.prepare(
+    "INSERT INTO monitors (name, url, type, favicon, created_by) VALUES (?, ?, ?, NULL, ?)"
+  );
+  stmt.run([name, url, type, createdBy], function (err) {
     callback(err, this.lastID);
   });
   stmt.finalize();
 }
 
+// Add a new monitor
+function addUser(name, loginId, password, email, callback) {
+  const stmt = db.prepare(
+    "INSERT INTO Users (name, login_id, password, email) VALUES (?, ?, ?, ?)"
+  );
+  stmt.run([name, loginId, password, email], function (err) {
+    callback(err, this.lastID);
+  });
+  stmt.finalize();
+}
+
+// Get user (last 30 checks)
+function getUser(loginId, callback) {
+  const query = `
+    SELECT id, name, login_id, password, email, role, created_at
+    FROM Users
+    WHERE login_id = ?
+    LIMIT 1
+  `;
+  db.get(query, [loginId], (err, row) => {
+    callback(err, row);
+  });
+}
+
 // Delete a monitor
 function deleteMonitor(id, callback) {
-  const stmt = db.prepare('DELETE FROM monitors WHERE id = ?');
+  const stmt = db.prepare("DELETE FROM monitors WHERE id = ?");
   stmt.run([id], callback);
   stmt.finalize();
 }
 
 // Update monitor status and response time
-function updateMonitorStatus(id, status, responseTime, errorMessage = null, callback) {
-  if (typeof errorMessage === 'function') {
+function updateMonitorStatus(
+  id,
+  status,
+  responseTime,
+  errorMessage = null,
+  callback
+) {
+  if (typeof errorMessage === "function") {
     callback = errorMessage;
     errorMessage = null;
   }
-  
-  const stmt = db.prepare('UPDATE monitors SET status = ?, response_time = ?, last_checked = datetime("now") WHERE id = ?');
+
+  const stmt = db.prepare(
+    'UPDATE monitors SET status = ?, response_time = ?, last_checked = datetime("now") WHERE id = ?'
+  );
   stmt.run([status, responseTime, id], (err) => {
     if (err) {
       callback(err);
       return;
     }
-    const historyStmt = db.prepare('INSERT INTO monitor_history (monitor_id, status, response_time, error_message, checked_at) VALUES (?, ?, ?, ?, datetime("now"))');
+    const historyStmt = db.prepare(
+      'INSERT INTO monitor_history (monitor_id, status, response_time, error_message, checked_at) VALUES (?, ?, ?, ?, datetime("now"))'
+    );
     historyStmt.run([id, status, responseTime, errorMessage], callback);
     historyStmt.finalize();
   });
@@ -222,20 +329,22 @@ function getMonitorResponseTimeChartData(id, callback) {
   db.all(query, [id], callback);
 }
 
-function updateMonitor(id, name, url, type = 'http', callback) {
-  const stmt = db.prepare('UPDATE monitors SET name = ?, url = ?, type = ? WHERE id = ?');
+function updateMonitor(id, name, url, type = "http", callback) {
+  const stmt = db.prepare(
+    "UPDATE monitors SET name = ?, url = ?, type = ? WHERE id = ?"
+  );
   stmt.run([name, url, type, id], callback);
   stmt.finalize();
 }
 
 function updateMonitorFavicon(id, favicon, callback) {
-  const stmt = db.prepare('UPDATE monitors SET favicon = ? WHERE id = ?');
+  const stmt = db.prepare("UPDATE monitors SET favicon = ? WHERE id = ?");
   stmt.run([favicon, id], callback);
   stmt.finalize();
 }
 
 function toggleMonitorPause(id, paused, callback) {
-  const stmt = db.prepare('UPDATE monitors SET paused = ? WHERE id = ?');
+  const stmt = db.prepare("UPDATE monitors SET paused = ? WHERE id = ?");
   stmt.run([paused ? 1 : 0, id], callback);
   stmt.finalize();
 }
@@ -243,7 +352,10 @@ function toggleMonitorPause(id, paused, callback) {
 module.exports = {
   db,
   getAllMonitors,
+  getMonitorsForUser,
   addMonitor,
+  addUser,
+  getUser,
   deleteMonitor,
   updateMonitorStatus,
   getUptimePercentage,
@@ -254,5 +366,5 @@ module.exports = {
   toggleMonitorPause,
   getMonitorUptimeChartData,
   getMonitorResponseTimeChartData,
-  updateMonitorFavicon
+  updateMonitorFavicon,
 };
