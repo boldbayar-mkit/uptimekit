@@ -144,6 +144,13 @@ db.serialize(() => {
     }
   });
 });
+// Get all users
+function getAllUsers(callback) {
+  db.all(
+    "SELECT a.*, (SELECT count(*) from monitors WHERE created_by = a.id) as cnt FROM Users a ORDER BY a.id",
+    callback
+  );
+}
 
 // Get all monitors
 function getAllMonitors(callback) {
@@ -152,7 +159,8 @@ function getAllMonitors(callback) {
 
 // Get monitors filtered by role/user from the database
 function getMonitorsForUser(role, userId, callback) {
-  if (role === "admin") {
+  console.log("Getting monitors for user:", role, userId);
+  if (role == "admin") {
     db.all("SELECT * FROM monitors ORDER BY id", callback);
   } else {
     db.all(
@@ -353,6 +361,7 @@ module.exports = {
   db,
   getAllMonitors,
   getMonitorsForUser,
+  getAllUsers,
   addMonitor,
   addUser,
   getUser,

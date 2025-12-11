@@ -20,6 +20,7 @@ import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { useUserInfo } from "../providers/userInfoProviders.jsx";
 import { useForm } from "react-hook-form";
+import MonitorUserDialog from "./MonitorUserDialog";
 
 const Dashboard = ({ registerRefresh }) => {
   const queryClient = useQueryClient();
@@ -30,7 +31,7 @@ const Dashboard = ({ registerRefresh }) => {
   //const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const containerRef = useRef(null);
   const swapyRef = useRef(null);
-
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
   const {
     formState: { errors },
   } = useForm({
@@ -52,6 +53,14 @@ const Dashboard = ({ registerRefresh }) => {
     },
     enabled: !!userInfo,
     refetchInterval: 30000,
+  });
+
+  const { data: users = [], loading: isUserDataLoading } = useQuery({
+    queryKey: ["users"],
+    queryFn: () => {
+      return axios.get("/api/users").then((res) => res.data);
+    },
+    enabled: !!userInfo,
   });
 
   const handleRefresh = async () => {
@@ -88,6 +97,7 @@ const Dashboard = ({ registerRefresh }) => {
 
   // Aggregate statistics
   const stats = {
+    userCnt: users.length,
     total: monitors.length,
     up: monitors.filter((m) => m.status === "up").length,
     down: monitors.filter((m) => m.status === "down").length,
@@ -290,9 +300,29 @@ const Dashboard = ({ registerRefresh }) => {
       {monitors.length > 0 && (
         <div className="border-b bg-muted/30">
           <div className="container mx-auto px-4 py-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div
+              className={`grid grid-cols-2 ${
+                userInfo.role == "admin" ? "md:grid-cols-6" : "md:grid-cols-5"
+              } gap-4`}
+            >
+              {userInfo?.role == "admin" && (
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => setUserDialogOpen(true)}
+                >
+                  <CardContent className="pt-14">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Total Users
+                      </p>
+                      <p className="text-3xl font-bold">{stats.userCnt}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
+                <CardContent className="pt-14">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-1">
                       Total Monitors
@@ -303,7 +333,7 @@ const Dashboard = ({ registerRefresh }) => {
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
+                <CardContent className="pt-14">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-1">
                       Operational
@@ -320,7 +350,7 @@ const Dashboard = ({ registerRefresh }) => {
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
+                <CardContent className="pt-14">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-1">Down</p>
                     <p className="text-3xl font-bold text-red-600 dark:text-red-400">
@@ -335,7 +365,7 @@ const Dashboard = ({ registerRefresh }) => {
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
+                <CardContent className="pt-14">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-1">Uptime</p>
                     <div className="flex items-center justify-center gap-1">
@@ -355,7 +385,7 @@ const Dashboard = ({ registerRefresh }) => {
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
+                <CardContent className="pt-14">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-1">
                       Health Score
@@ -505,6 +535,13 @@ const Dashboard = ({ registerRefresh }) => {
           </Tabs>
         )}
       </div>
+      <MonitorUserDialog
+        open={userDialogOpen}
+        onOpenChange={setUserDialogOpen}
+        //monitor={monitor}
+        loading={isUserDataLoading}
+        userList={users}
+      />
     </div>
   );
 };

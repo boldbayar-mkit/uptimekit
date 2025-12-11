@@ -24,6 +24,7 @@ const {
   getMonitorResponseTimeChartData,
   updateMonitorFavicon,
   getMonitorsForUser,
+  getAllUsers,
 } = require("./database");
 const cookieParser = require("cookie-parser");
 const { authenticateJWT } = require("./common/context");
@@ -565,4 +566,18 @@ app.get("/api/me", authenticateJWT, (req, res) => {
 app.post("/api/logout", (req, res) => {
   res.clearCookie("access_token");
   res.status(200).json({ message: "Logged out successfully" });
+});
+
+app.get("/api/users", authenticateJWT, (req, res) => {
+  console.log("Fetching users");
+  //const role = req.user?.role || "user";
+  //const userId = req.user?.id;
+
+  getAllUsers((err, rows) => {
+    if (err) {
+      console.error("Error fetching users:", err.message);
+      return res.status(500).json({ error: "Failed to fetch monitors" });
+    }
+    res.status(200).json(rows || []);
+  });
 });
