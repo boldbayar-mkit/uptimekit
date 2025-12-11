@@ -58,6 +58,7 @@ const SignupDialog = ({ fullWidth }) => {
       <DialogTrigger asChild>
         <div className={fullWidth ? "w-full" : "md:w-auto w-auto"}>
           <Button
+            type="button"
             variant="outline"
             // className="md:size-auto md:gap-2 md:px-6 md:py-2 md:h-10 h-10 w-10 md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all flex md:flex items-center justify-center"
             className={`${
