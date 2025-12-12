@@ -9,81 +9,128 @@ import {
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Clock, UserCheck, UserX } from "lucide-react";
 import { formatDistanceToNow, formatDate } from "date-fns";
 import axios from "axios";
 import { parseUTC } from "../lib/timezone";
 
-const getStatusBadge = (status) => {
+// User status configurations
+const USER_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected'
+};
+
+const getStatusConfig = (status) => {
   switch (status) {
-    case "up":
+    case USER_STATUS.APPROVED:
       return {
-        icon: CheckCircle,
-        label: "Up",
-        color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        icon: UserCheck,
+        label: "Approved",
+        color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        badgeColor: "bg-emerald-500 text-white"
       };
-    case "down":
+    case USER_STATUS.REJECTED:
       return {
-        icon: XCircle,
-        label: "Down",
-        color: "bg-red-500/10 text-red-600 dark:text-red-400",
+        icon: UserX,
+        label: "Rejected",
+        color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+        badgeColor: "bg-red-500 text-white"
       };
-    case "slow":
-      return {
-        icon: AlertTriangle,
-        label: "Slow",
-        color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-      };
+    case USER_STATUS.PENDING:
     default:
       return {
-        icon: AlertTriangle,
-        label: "Unknown",
-        color: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
+        icon: Clock,
+        label: "Pending",
+        color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        badgeColor: "bg-amber-500 text-white"
       };
   }
 };
 
+// Tab component
+const Tabs = ({ tabs, activeTab, onTabChange, counts }) => {
+  return (
+    <div className="flex space-x-1 border-b border-border mb-6">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.value;
+        const count = counts[tab.value] || 0;
+        const statusConfig = getStatusConfig(tab.value);
+
+        return (
+          <button
+            key={tab.value}
+            onClick={() => onTabChange(tab.value)}
+            className={`
+              flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200
+              border-b-2 -mb-px rounded-t-lg
+              ${isActive
+                ? 'text-primary border-primary bg-primary/5'
+                : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
+              }
+            `}
+          >
+            <span>{tab.label}</span>
+            <Badge
+              variant="secondary"
+              className={`
+                text-xs px-2 py-0.5
+                ${isActive ? statusConfig.badgeColor : 'bg-muted text-muted-foreground'}
+              `}
+            >
+              {count}
+            </Badge>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 const MonitorUserDialog = ({ open, onOpenChange, userList = [], loading }) => {
-  const [history, setHistory] = useState([]);
-  //const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(USER_STATUS.PENDING);
 
-  // useEffect(() => {
-  //   if (open && monitor) {
-  //     fetchHistory();
-  //   }
-  // }, [open, monitor]);
+  // Define tabs
+  const tabs = [
+    { value: USER_STATUS.PENDING, label: "Pending" },
+    { value: USER_STATUS.APPROVED, label: "Approved" },
+    { value: USER_STATUS.REJECTED, label: "Rejected" }
+  ];
 
-  // const fetchHistory = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const response = await axios.get(`/api/monitors/${monitor.id}/history`);
-  //     setHistory(
-  //       Array.isArray(response.data)
-  //         ? response.data
-  //         : response.data.history || []
-  //     );
-  //   } catch (error) {
-  //     console.error("Error fetching history:", error);
-  //     setHistory([]);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  // Group users by status and count them
+  const userCounts = userList.reduce((acc, user) => {
+    const status = user.status || USER_STATUS.PENDING; // Default to pending if no status
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
 
-  // const getStatusColor = (status) => {
-  //   switch (status) {
-  //     case "up":
-  //       return "text-emerald-600 dark:text-emerald-400";
-  //     case "down":
-  //       return "text-red-600 dark:text-red-400";
-  //     case "slow":
-  //       return "text-amber-600 dark:text-amber-400";
-  //     default:
-  //       return "text-gray-600 dark:text-gray-400";
-  //   }
-  // };
+  // Filter users by active tab
+  const filteredUsers = userList.filter(user =>
+    (user.status || USER_STATUS.PENDING) === activeTab
+  );
 
-  //if (!monitor) return null;
+  // Handle user actions
+  const handleApprove = async (userId) => {
+    try {
+      // Implement approve API call
+      await axios.patch(`/api/users/${userId}`, { status: USER_STATUS.APPROVED });
+      // Update local state or trigger refresh
+      console.log(`User ${userId} approved`);
+    } catch (error) {
+      console.error("Error approving user:", error);
+    }
+  };
+
+  const handleReject = async (userId) => {
+    try {
+      // Implement reject API call
+      await axios.patch(`/api/users/${userId}`, { status: USER_STATUS.REJECTED });
+      // Update local state or trigger refresh
+      console.log(`User ${userId} rejected`);
+    } catch (error) {
+      console.error("Error rejecting user:", error);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,43 +153,104 @@ const MonitorUserDialog = ({ open, onOpenChange, userList = [], loading }) => {
           }
         `}</style>
         <DialogHeader>
-          <DialogTitle>Login ID</DialogTitle>
-          <DialogDescription>Count of created monitors</DialogDescription>
+          <DialogTitle>User list</DialogTitle>
+          <DialogDescription>Manage user approval status</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        {/* Tabs */}
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          counts={userCounts}
+        />
+
+        {/* User List with Animation */}
+        <div className="space-y-3 min-h-[200px]">
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <p className="text-muted-foreground animate-pulse">
                 Loading users...
               </p>
             </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="text-muted-foreground/50 mb-2">
+                {(() => {
+                  const StatusIcon = getStatusConfig(activeTab).icon;
+                  return <StatusIcon className="w-12 h-12 mx-auto" />;
+                })()}
+              </div>
+              <p className="text-muted-foreground font-medium">No users found</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                {activeTab === USER_STATUS.PENDING && "No users waiting for approval"}
+                {activeTab === USER_STATUS.APPROVED && "No approved users"}
+                {activeTab === USER_STATUS.REJECTED && "No rejected users"}
+              </p>
+            </div>
           ) : (
-            userList.map((user, index) => {
-              return (
-                <Card key={index} className="border-l-4">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {parseUTC(user.created_at).toLocaleString()}
-                          </p>
+            <div className="space-y-3 animate-in fade-in-0 duration-300">
+              {filteredUsers.map((user, index) => {
+                const userStatus = user.status || USER_STATUS.PENDING;
+                const statusConfig = getStatusConfig(userStatus);
+                const StatusIcon = statusConfig.icon;
+
+                return (
+                  <Card key={index} className={`border-l-4 ${statusConfig.color}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center gap-2">
+                            <StatusIcon className="w-4 h-4" />
+                            <Badge
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {statusConfig.label}
+                            </Badge>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Created {parseUTC(user.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                              {user.cnt || 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground">monitors</p>
+                          </div>
+                          {/* Action buttons for pending users */}
+                          {userStatus === USER_STATUS.PENDING && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleApprove(user.id)}
+                                className="h-8 px-3 text-emerald-600 border-emerald-600 hover:bg-emerald-600 hover:text-white"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReject(user.id)}
+                                className="h-8 px-3 text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-lg font-bold text-emerald-600 dark:text-emerald-400`}
-                        >
-                          {user.cnt}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
 

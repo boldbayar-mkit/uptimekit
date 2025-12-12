@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, XCircle, Clock, ExternalLink, Trash2, Activity, MoreVertical, Pause, Play, Edit, TrendingUp, History, Globe, Network, Wifi, GripVertical } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Clock, ExternalLink, Trash2, Activity, MoreVertical, Pause, Play, Edit, TrendingUp, History, Globe, Network, Wifi, GripVertical, Shield, ShieldCheck, ShieldAlert, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -19,33 +19,75 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip 
 const getStatusInfo = (status) => {
   switch (status) {
     case 'up':
-      return { 
-        bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20', 
+      return {
+        bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         icon: CheckCircle,
         label: 'Operational'
       };
     case 'slow':
-      return { 
-        bgColor: 'bg-amber-500/10 dark:bg-amber-500/20', 
+      return {
+        bgColor: 'bg-amber-500/10 dark:bg-amber-500/20',
         textColor: 'text-amber-600 dark:text-amber-400',
         icon: AlertTriangle,
         label: 'Degraded'
       };
     case 'down':
-      return { 
-        bgColor: 'bg-red-500/10 dark:bg-red-500/20', 
+      return {
+        bgColor: 'bg-red-500/10 dark:bg-red-500/20',
         textColor: 'text-red-600 dark:text-red-400',
         icon: XCircle,
         label: 'Down'
       };
     default:
-      return { 
-        bgColor: 'bg-blue-500/10 dark:bg-blue-500/20', 
+      return {
+        bgColor: 'bg-blue-500/10 dark:bg-blue-500/20',
         textColor: 'text-blue-600 dark:text-blue-400 animate-pulse',
         icon: Clock,
         label: 'Collecting data...'
       };
+  }
+};
+
+// SSL Certificate status helper functions
+const getSSLStatusInfo = (daysRemaining, isValid) => {
+  if (!isValid || daysRemaining <= 0) {
+    return {
+      status: 'expired',
+      label: 'Expired',
+      icon: ShieldAlert,
+      bgColor: 'bg-red-500/10 dark:bg-red-500/20',
+      textColor: 'text-red-600 dark:text-red-400',
+      badgeColor: 'bg-red-500 text-white'
+    };
+  } else if (daysRemaining < 30) {
+    return {
+      status: 'expiring-soon',
+      label: 'Expiring Soon',
+      icon: ShieldAlert,
+      bgColor: 'bg-amber-500/10 dark:bg-amber-500/20',
+      textColor: 'text-amber-600 dark:text-amber-400',
+      badgeColor: 'bg-amber-500 text-white'
+    };
+  } else {
+    return {
+      status: 'valid',
+      label: 'Valid',
+      icon: ShieldCheck,
+      bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+      textColor: 'text-emerald-600 dark:text-emerald-400',
+      badgeColor: 'bg-emerald-500 text-white'
+    };
+  }
+};
+
+const getDaysRemainingColor = (daysRemaining, isValid) => {
+  if (!isValid || daysRemaining <= 0) {
+    return 'text-red-600 dark:text-red-400 font-semibold';
+  } else if (daysRemaining < 30) {
+    return 'text-amber-600 dark:text-amber-400 font-semibold';
+  } else {
+    return 'text-emerald-600 dark:text-emerald-400 font-semibold';
   }
 };
 
@@ -353,6 +395,98 @@ const MonitorCard = ({ monitor, onDelete }) => {
           ) : (
             <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
               <p>Collecting data...</p>
+            </div>
+          )}
+        </div>
+
+        {/* SSL Certificate Information */}
+        <div className="pt-4 border-t border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-muted-foreground" />
+              <p className="text-xs font-semibold text-muted-foreground">SSL Certificate Information</p>
+            </div>
+            {monitor.type === 'https' && monitor.sslCertificate?.status === 'expiring-soon' && (
+              <Button size="sm" variant="outline" className="h-6 px-2 text-xs">
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Renew SSL
+              </Button>
+            )}
+          </div>
+
+          {monitor.type === 'https' && monitor.sslCertificate ? (
+            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+              {(() => {
+                const sslCert = monitor.sslCertificate;
+                const daysRemaining = sslCert.daysRemaining || 0;
+                const isValid = sslCert.valid !== false;
+                const sslStatus = getSSLStatusInfo(daysRemaining, isValid);
+                const StatusIcon = sslStatus.icon;
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <StatusIcon className="w-4 h-4" />
+                        <span className="text-sm font-medium">SSL Status:</span>
+                      </div>
+                      <Badge variant="secondary" className={sslStatus.badgeColor}>
+                        {sslStatus.label}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Issuer:</span>
+                        <span className="font-medium">{sslCert.issuer || 'Unknown'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Domain:</span>
+                        <span className="font-medium text-right">{sslCert.domain || 'Unknown'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Issued Date:</span>
+                        <span className="font-medium">
+                          {sslCert.issuedDate ? parseUTC(sslCert.issuedDate).toLocaleDateString() : 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Expiration Date:</span>
+                        <span className="font-medium">
+                          {sslCert.expirationDate ? parseUTC(sslCert.expirationDate).toLocaleDateString() : 'Unknown'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm text-muted-foreground">Days Remaining: </span>
+                          <span className={`text-lg ${getDaysRemainingColor(daysRemaining, isValid)}`}>
+                            {daysRemaining > 0 ? `${daysRemaining} days` : 'Expired'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Auto-Renewal:</span>
+                          <Badge variant={sslCert.autoRenewal ? 'default' : 'secondary'} className="text-xs">
+                            {sslCert.autoRenewal ? 'Enabled' : 'Disabled'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : monitor.type === 'https' ? (
+            <div className="bg-muted/30 rounded-lg p-8 text-center">
+              <ShieldAlert className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">SSL certificate information not available</p>
+            </div>
+          ) : (
+            <div className="bg-muted/30 rounded-lg p-8 text-center">
+              <Shield className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">SSL certificate not available for HTTP monitors</p>
             </div>
           )}
         </div>
