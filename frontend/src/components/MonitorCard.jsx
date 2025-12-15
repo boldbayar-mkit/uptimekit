@@ -14,7 +14,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { parseUTC } from '../lib/timezone';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 const getStatusInfo = (status) => {
   switch (status) {
@@ -108,7 +108,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
 
   const { data: uptimeChartData = [] } = useQuery({
     queryKey: ['monitor-uptime-chart', monitor.id],
-    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/uptime`).then(res => 
+    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/uptime`).then(res =>
       res.data.map(item => ({
         ...item,
         time: parseUTC(item.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -119,7 +119,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
 
   const { data: responseTimeChartData = [] } = useQuery({
     queryKey: ['monitor-response-time-chart', monitor.id],
-    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/response-time`).then(res => 
+    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/response-time`).then(res =>
       res.data.map(item => ({
         ...item,
         time: parseUTC(item.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -162,10 +162,10 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               {monitor.favicon && monitor.type === 'http' && (
-                <img 
-                  src={monitor.favicon} 
-                  alt="Favicon" 
-                  className="h-6 w-6 rounded-sm flex-shrink-0" 
+                <img
+                  src={monitor.favicon}
+                  alt="Favicon"
+                  className="h-6 w-6 rounded-sm flex-shrink-0"
                   onError={(e) => e.target.style.display = 'none'}
                 />
               )}
@@ -195,9 +195,9 @@ const MonitorCard = ({ monitor, onDelete }) => {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <a 
-                  href={monitor.url} 
-                  target="_blank" 
+                <a
+                  href={monitor.url}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 truncate group/link"
                 >
@@ -210,7 +210,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
               </TooltipContent>
             </Tooltip>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -221,51 +221,51 @@ const MonitorCard = ({ monitor, onDelete }) => {
               <TooltipContent>Drag to reorder</TooltipContent>
             </Tooltip>
             <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 transition-opacity flex-shrink-0"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem className="cursor-pointer" onClick={() => setHistoryOpen(true)}>
-                <History className="h-4 w-4 mr-2" />
-                View History
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => setDowntimeOpen(true)}>
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                View Downtime
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => setEditOpen(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Monitor
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer" onClick={handleTogglePause}>
-                {monitor.paused ? (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Resume Monitoring
-                  </>
-                ) : (
-                  <>
-                    <Pause className="h-4 w-4 mr-2" />
-                    Pause Monitoring
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="cursor-pointer text-destructive focus:text-destructive"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Monitor
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 transition-opacity flex-shrink-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem className="cursor-pointer" onClick={() => setHistoryOpen(true)}>
+                  <History className="h-4 w-4 mr-2" />
+                  View History
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => setDowntimeOpen(true)}>
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  View Downtime
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => setEditOpen(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Monitor
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer" onClick={handleTogglePause}>
+                  {monitor.paused ? (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Resume Monitoring
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause Monitoring
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Monitor
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
@@ -294,9 +294,9 @@ const MonitorCard = ({ monitor, onDelete }) => {
               <span className="text-xs text-muted-foreground">No data</span>
             )}
           </div>
-          <Progress 
-            value={uptimePercentage || 0} 
-            className="h-2" 
+          <Progress
+            value={uptimePercentage || 0}
+            className="h-2"
           />
         </div>
 
@@ -320,7 +320,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="text-center">
             <p className="text-xs text-muted-foreground font-medium">Avg Response</p>
             <p className="text-sm font-bold text-primary mt-1">
-              {responseTimeChartData.length > 0 
+              {responseTimeChartData.length > 0
                 ? Math.round(responseTimeChartData.reduce((acc, d) => acc + d.avgResponse, 0) / responseTimeChartData.length)
                 : monitor.response_time
               }ms
@@ -329,7 +329,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="text-center">
             <p className="text-xs text-muted-foreground font-medium">Min Response</p>
             <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-              {responseTimeChartData.length > 0 
+              {responseTimeChartData.length > 0
                 ? Math.min(...responseTimeChartData.map(d => d.avgResponse)).toFixed(0)
                 : monitor.response_time
               }ms
@@ -338,7 +338,7 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="text-center">
             <p className="text-xs text-muted-foreground font-medium">Max Response</p>
             <p className="text-sm font-bold text-red-600 dark:text-red-400 mt-1">
-              {responseTimeChartData.length > 0 
+              {responseTimeChartData.length > 0
                 ? Math.max(...responseTimeChartData.map(d => d.avgResponse)).toFixed(0)
                 : monitor.response_time
               }ms
@@ -351,42 +351,42 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <p className="text-xs font-semibold text-muted-foreground mb-3">24-Hour Uptime</p>
           {uptimeChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart 
+              <AreaChart
                 data={uptimeChartData}
                 margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
               >
                 <defs>
                   <linearGradient id={`uptimeGradient-${monitor.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="time" 
-                  className="text-xs" 
+                <XAxis
+                  dataKey="time"
+                  className="text-xs"
                   tick={{ fontSize: 9 }}
                   interval="preserveStartEnd"
                   minTickGap={30}
                 />
-                <YAxis 
-                  domain={[0, 100]} 
+                <YAxis
+                  domain={[0, 100]}
                   className="text-xs"
                   tick={{ fontSize: 10 }}
                   width={35}
                 />
-                <RechartsTooltip 
-                  contentStyle={{ 
+                <RechartsTooltip
+                  contentStyle={{
                     backgroundColor: 'hsl(var(--popover))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '6px',
                   }}
                   formatter={(value) => `${value.toFixed(1)}%`}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="uptime" 
-                  stroke="#10b981" 
+                <Area
+                  type="monotone"
+                  dataKey="uptime"
+                  stroke="#10b981"
                   strokeWidth={2}
                   fill={`url(#uptimeGradient-${monitor.id})`}
                 />
@@ -417,6 +417,15 @@ const MonitorCard = ({ monitor, onDelete }) => {
           {monitor.type === 'https' && monitor.sslCertificate ? (
             <div className="bg-muted/30 rounded-lg p-4 space-y-3">
               {(() => {
+                // Hide SSL info for API endpoints
+                if (monitor.url.toLowerCase().includes('api/')) {
+                  return (
+                    <div className="text-center text-sm text-muted-foreground py-2">
+                      SSL details hidden for API endpoints
+                    </div>
+                  );
+                }
+
                 const sslCert = monitor.sslCertificate;
                 const daysRemaining = sslCert.daysRemaining || 0;
                 const isValid = sslCert.valid !== false;
@@ -447,13 +456,13 @@ const MonitorCard = ({ monitor, onDelete }) => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Issued Date:</span>
                         <span className="font-medium">
-                          {sslCert.issuedDate ? parseUTC(sslCert.issuedDate).toLocaleDateString() : 'Unknown'}
+                          {sslCert.issuedDate ? new Date(sslCert.issuedDate).toLocaleDateString() : 'Unknown'}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Expiration Date:</span>
                         <span className="font-medium">
-                          {sslCert.expirationDate ? parseUTC(sslCert.expirationDate).toLocaleDateString() : 'Unknown'}
+                          {sslCert.expirationDate ? new Date(sslCert.expirationDate).toLocaleDateString() : 'Unknown'}
                         </span>
                       </div>
                     </div>

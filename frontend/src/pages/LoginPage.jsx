@@ -11,6 +11,7 @@ import { Button } from "../components/ui/button.jsx";
 import { User, Lock, Activity } from "lucide-react";
 import SignupDialog from "../components/SignupDialog.jsx";
 import { useUserInfo } from "../providers/userInfoProviders.jsx";
+import { toast } from "react-toastify";
 
 const LoginPage = () => {
   const queryClient = useQueryClient();
@@ -34,7 +35,8 @@ const LoginPage = () => {
       queryClient.invalidateQueries({ queryKey: ["users", "profileInfo"] });
     },
     onError: (error) => {
-      console.log("Error during login:", error);
+      const message = error.response?.data?.error || "Login failed";
+      toast.error(message);
     },
   });
 
@@ -138,11 +140,11 @@ const LoginPage = () => {
                   <>Login</>
                 )}
               </Button>
-              <div>
-                <SignupDialog fullWidth />
-              </div>
             </div>
           </form>
+          <div className="px-6 text-center">
+            <SignupDialog fullWidth />
+          </div>
         </CardContent>
       </Card>
     </div>

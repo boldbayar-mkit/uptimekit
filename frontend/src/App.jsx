@@ -7,6 +7,8 @@ import Layout from "./components/Layout.jsx";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { UserInfoProvider } from "./providers/userInfoProviders.jsx";
 import "./App.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ToastContainer position="top-right" theme="colored" />
       <TooltipProvider>
         <UserInfoProvider>
           <BrowserRouter>

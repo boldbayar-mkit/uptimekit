@@ -23,6 +23,7 @@ db.serialize(() => {
       password TEXT NOT NULL,
       email TEXT NOT NULL,
       role TEXT DEFAULT 'user',
+      status TEXT DEFAULT 'Pending',
       created_at DATETIME DEFAULT (datetime('now')),
       UNIQUE(login_id, email)
     )
@@ -95,6 +96,17 @@ db.serialize(() => {
 
   db.run(
     `
+    ALTER TABLE monitors ADD COLUMN ssl_info TEXT
+  `,
+    (err) => {
+      if (err && err.code !== "SQLITE_ERROR") {
+        console.error("Error adding ssl_info column:", err.message);
+      }
+    }
+  );
+
+  db.run(
+    `
     UPDATE monitors SET type = 'http' WHERE type IS NULL
   `,
     (err) => {
@@ -133,8 +145,15 @@ db.serialize(() => {
       const bcrypt = require("bcryptjs");
       const adminPassword = bcrypt.hashSync("admin123", 10);
       db.run(
-        "INSERT INTO Users (name, login_id, password, email, role) VALUES (?, ?, ?, ?, ?)",
-        ["Admin", "admin", adminPassword, "admin@uptimekit.local", "admin"],
+        "INSERT INTO Users (name, login_id, password, email, role, status) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          "Admin",
+          "admin",
+          adminPassword,
+          "admin@uptimekit.local",
+          "admin",
+          "Approved",
+        ],
         (err) => {
           if (!err) {
             console.log("Default admin user created.");
@@ -185,7 +204,7 @@ function addMonitor(name, url, type = "http", createdBy, callback) {
 // Add a new monitor
 function addUser(name, loginId, password, email, callback) {
   const stmt = db.prepare(
-    "INSERT INTO Users (name, login_id, password, email) VALUES (?, ?, ?, ?)"
+    "INSERT INTO Users (name, login_id, password, email, status) VALUES (?, ?, ?, ?, 'PENDING')"
   );
   stmt.run([name, loginId, password, email], function (err) {
     callback(err, this.lastID);
@@ -193,10 +212,10 @@ function addUser(name, loginId, password, email, callback) {
   stmt.finalize();
 }
 
-// Get user (last 30 checks)
+// Get user
 function getUser(loginId, callback) {
   const query = `
-    SELECT id, name, login_id, password, email, role, created_at
+    SELECT id, name, login_id, password, email, role, status, created_at
     FROM Users
     WHERE login_id = ?
     LIMIT 1
@@ -357,6 +376,26 @@ function toggleMonitorPause(id, paused, callback) {
   stmt.finalize();
 }
 
+function updateMonitorSSL(id, sslInfo, callback) {
+  const stmt = db.prepare("UPDATE monitors SET ssl_info = ? WHERE id = ?");
+  stmt.run([JSON.stringify(sslInfo), id], callback);
+  stmt.finalize();
+}
+
+// Approve user
+function approveUser(id, callback) {
+  const stmt = db.prepare("UPDATE Users SET status = 'APPROVED' WHERE id = ?");
+  stmt.run([id], callback);
+  stmt.finalize();
+}
+
+// Reject user
+function rejectUser(id, callback) {
+  const stmt = db.prepare("UPDATE Users SET status = 'REJECTED' WHERE id = ?");
+  stmt.run([id], callback);
+  stmt.finalize();
+}
+
 module.exports = {
   db,
   getAllMonitors,
@@ -365,6 +404,8 @@ module.exports = {
   addMonitor,
   addUser,
   getUser,
+  approveUser,
+  rejectUser,
   deleteMonitor,
   updateMonitorStatus,
   getUptimePercentage,
@@ -376,4 +417,5 @@ module.exports = {
   getMonitorUptimeChartData,
   getMonitorResponseTimeChartData,
   updateMonitorFavicon,
+  updateMonitorSSL,
 };

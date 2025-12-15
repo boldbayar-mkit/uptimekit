@@ -18,7 +18,8 @@
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
     "ping": "^1.0.0",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "ssl-checker": "^2.0.10"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

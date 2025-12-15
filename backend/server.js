@@ -5,6 +5,7 @@ const cron = require("node-cron");
 const axios = require("axios");
 const dns = require("dns").promises;
 const ping = require("ping");
+const sslChecker = require("ssl-checker");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const {
@@ -25,6 +26,9 @@ const {
   updateMonitorFavicon,
   getMonitorsForUser,
   getAllUsers,
+  approveUser,
+  rejectUser,
+  updateMonitorSSL,
 } = require("./database");
 const cookieParser = require("cookie-parser");
 const { authenticateJWT } = require("./common/context");
@@ -90,15 +94,23 @@ app.get("/api/monitors", authenticateJWT, (req, res) => {
       ...monitor,
       type: monitor.type || "http",
       favicon: monitor.favicon || null,
+      sslCertificate: monitor.ssl_info ? JSON.parse(monitor.ssl_info) : null,
     }));
     res.json(monitorsWithType);
   });
 });
 
 app.post("/api/monitors", authenticateJWT, async (req, res) => {
-  const { name, url, type = "http" } = req.body;
+  let { name, url, type = "http" } = req.body;
   if (!name || !url) {
     return res.status(400).json({ error: "Name and URL are required" });
+  }
+
+  // Auto-detect type from URL
+  if (url.toLowerCase().startsWith("https://")) {
+    type = "https";
+  } else if (url.toLowerCase().startsWith("http://")) {
+    type = "http";
   }
 
   // Get the authenticated user's ID from JWT token
@@ -115,7 +127,7 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
       return res.status(500).json({ error: "Failed to add monitor" });
     }
 
-    if (type === "http") {
+    if (type === "http" || type === "https") {
       fetchFavicon(url)
         .then((favicon) => {
           if (favicon) {
@@ -129,6 +141,11 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
         .catch((err) => {
           console.error("Error fetching favicon:", err.message);
         });
+
+      if (type === "https") {
+        // Check SSL immediately
+        checkSSL({ id, url, type });
+      }
     }
 
     res.status(201).json({
@@ -206,6 +223,11 @@ app.put("/api/monitors/:id", (req, res) => {
       return res.status(500).json({ error: "Failed to update monitor" });
     }
     res.json({ message: "Monitor updated successfully" });
+
+    // Trigger checks if updated
+    if (type === 'https') {
+      checkSSL({ id, url, type });
+    }
   });
 });
 
@@ -403,6 +425,51 @@ async function checkUptime(monitor) {
   }
 }
 
+async function checkSSL(monitor) {
+  if (monitor.type !== 'https') return;
+
+  try {
+    let hostname = monitor.url;
+    if (hostname.startsWith("http://") || hostname.startsWith("https://")) {
+      hostname = new URL(monitor.url).hostname;
+    }
+
+    const sslDetails = await sslChecker(hostname);
+
+    // Transform to match frontend expectations
+    const mappedSSL = {
+      daysRemaining: sslDetails.daysRemaining,
+      valid: sslDetails.valid,
+      issuer: typeof sslDetails.issuer === 'object' ? (sslDetails.issuer.O || sslDetails.issuer.CN) : sslDetails.issuer,
+      domain: hostname,
+      issuedDate: sslDetails.validFrom,
+      expirationDate: sslDetails.validTo,
+      autoRenewal: false
+    };
+
+    updateMonitorSSL(monitor.id, mappedSSL, (err) => {
+      if (err) console.error(`Error updating SSL for monitor ${monitor.id}:`, err.message);
+    });
+
+  } catch (error) {
+    console.error(`SSL check failed for monitor ${monitor.id}:`, error.message);
+    // Optionally update with error state or null
+  }
+}
+
+// Check SSL every 12 hours
+cron.schedule("0 */12 * * *", () => {
+  console.log("Running SSL checks...");
+  getAllMonitors((err, monitors) => {
+    if (err) return;
+    monitors.forEach(monitor => {
+      if (!monitor.paused && monitor.type === 'https') {
+        checkSSL(monitor);
+      }
+    });
+  });
+});
+
 // Run checks every minute
 cron.schedule("* * * * *", () => {
   console.log("Running uptime checks...");
@@ -520,6 +587,14 @@ app.post("/api/login", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    if (user.status === 'PENDING') {
+      return res.status(403).json({ error: "Your account is pending approval" });
+    }
+
+    if (user.status === 'REJECTED') {
+      return res.status(403).json({ error: "Your account has been rejected" });
+    }
+
     const passwordMatch = bcrypt.compareSync(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ error: "Invalid password" });
@@ -579,5 +654,43 @@ app.get("/api/users", authenticateJWT, (req, res) => {
       return res.status(500).json({ error: "Failed to fetch monitors" });
     }
     res.status(200).json(rows || []);
+  });
+});
+
+app.post("/api/approve/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "id is required" });
+  }
+
+  approveUser(id, (err) => {
+    if (err) {
+      console.error("Error approving user:", err.message);
+      return res.status(500).json({ error: "Failed to approve user" });
+    }
+
+    res.status(201).json({
+      id,
+      message: "User approved successfully",
+    });
+  });
+});
+
+app.post("/api/reject/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "id is required" });
+  }
+
+  rejectUser(id, (err) => {
+    if (err) {
+      console.error("Error rejecting user:", err.message);
+      return res.status(500).json({ error: "Failed to reject user" });
+    }
+
+    res.status(201).json({
+      id,
+      message: "User rejected successfully",
+    });
   });
 });
