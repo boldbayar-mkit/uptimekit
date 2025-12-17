@@ -32,7 +32,7 @@ db.serialize(() => {
       if (err) {
         console.error("Error creating table:", err.message);
       } else {
-        console.log("Monitors table ready.");
+        console.log("Users table ready.");
       }
     }
   );
