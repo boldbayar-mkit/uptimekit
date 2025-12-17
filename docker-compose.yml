@@ -17,7 +17,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:5173"
+      - "5174:5173"
     environment:
       - VITE_BACKEND_URL=http://backend:3000
       - TZ=UTC
