@@ -6,7 +6,7 @@ services:
     volumes:
       - backend-data:/app
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       - PORT=3000
       - NODE_ENV=production
@@ -17,9 +17,9 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:80"
+      - "5173:5173"
     environment:
-      - VITE_BACKEND_URL=http://localhost:3000
+      - VITE_BACKEND_URL=http://backend:3000
       - TZ=UTC
 
 networks:
