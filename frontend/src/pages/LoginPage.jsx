@@ -58,7 +58,7 @@ const LoginPage = () => {
             <Activity className="w-12 h-12 text-primary" />
           </div>
           <h2 className="text-2xl font-semibold text-center mb-3">
-            Login to UptimeKit
+            Login to LsWatch
           </h2>
           <p className="text-muted-foreground mb-6 text-center">
             Enter your credentials to access your monitors

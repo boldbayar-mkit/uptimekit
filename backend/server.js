@@ -106,11 +106,13 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
     return res.status(400).json({ error: "Name and URL are required" });
   }
 
-  // Auto-detect type from URL
-  if (url.toLowerCase().startsWith("https://")) {
-    type = "https";
-  } else if (url.toLowerCase().startsWith("http://")) {
-    type = "http";
+  // Auto-detect type from URL only if the user selected http (or didn't select type)
+  if (type === "http") {
+    if (url.toLowerCase().startsWith("https://")) {
+      type = "https";
+    } else if (url.toLowerCase().startsWith("http://")) {
+      type = "http";
+    }
   }
 
   // Get the authenticated user's ID from JWT token
