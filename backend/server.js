@@ -107,6 +107,7 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
   }
 
   // Auto-detect type from URL only if the user selected http (or didn't select type)
+  console.log("Initial type:", type);
   if (type === "http") {
     if (url.toLowerCase().startsWith("https://")) {
       type = "https";
@@ -117,7 +118,7 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
 
   // Get the authenticated user's ID from JWT token
   const createdBy = req.user ? req.user.id : null;
-
+  console.log("Creating monitor of type:", type);
   addMonitor(name, url, type, createdBy, (err, id) => {
     if (err) {
       console.error("Error adding monitor:", err.message);
@@ -227,7 +228,7 @@ app.put("/api/monitors/:id", (req, res) => {
     res.json({ message: "Monitor updated successfully" });
 
     // Trigger checks if updated
-    if (type === 'https') {
+    if (type === "https") {
       checkSSL({ id, url, type });
     }
   });
@@ -428,7 +429,7 @@ async function checkUptime(monitor) {
 }
 
 async function checkSSL(monitor) {
-  if (monitor.type !== 'https') return;
+  if (monitor.type !== "https") return;
 
   try {
     let hostname = monitor.url;
@@ -442,17 +443,23 @@ async function checkSSL(monitor) {
     const mappedSSL = {
       daysRemaining: sslDetails.daysRemaining,
       valid: sslDetails.valid,
-      issuer: typeof sslDetails.issuer === 'object' ? (sslDetails.issuer.O || sslDetails.issuer.CN) : sslDetails.issuer,
+      issuer:
+        typeof sslDetails.issuer === "object"
+          ? sslDetails.issuer.O || sslDetails.issuer.CN
+          : sslDetails.issuer,
       domain: hostname,
       issuedDate: sslDetails.validFrom,
       expirationDate: sslDetails.validTo,
-      autoRenewal: false
+      autoRenewal: false,
     };
 
     updateMonitorSSL(monitor.id, mappedSSL, (err) => {
-      if (err) console.error(`Error updating SSL for monitor ${monitor.id}:`, err.message);
+      if (err)
+        console.error(
+          `Error updating SSL for monitor ${monitor.id}:`,
+          err.message
+        );
     });
-
   } catch (error) {
     console.error(`SSL check failed for monitor ${monitor.id}:`, error.message);
     // Optionally update with error state or null
@@ -464,8 +471,8 @@ cron.schedule("0 */12 * * *", () => {
   console.log("Running SSL checks...");
   getAllMonitors((err, monitors) => {
     if (err) return;
-    monitors.forEach(monitor => {
-      if (!monitor.paused && monitor.type === 'https') {
+    monitors.forEach((monitor) => {
+      if (!monitor.paused && monitor.type === "https") {
         checkSSL(monitor);
       }
     });
@@ -589,11 +596,13 @@ app.post("/api/login", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (user.status === 'PENDING') {
-      return res.status(403).json({ error: "Your account is pending approval" });
+    if (user.status === "PENDING") {
+      return res
+        .status(403)
+        .json({ error: "Your account is pending approval" });
     }
 
-    if (user.status === 'REJECTED') {
+    if (user.status === "REJECTED") {
       return res.status(403).json({ error: "Your account has been rejected" });
     }
 
