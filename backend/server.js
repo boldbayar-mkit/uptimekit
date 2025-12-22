@@ -50,6 +50,10 @@ async function fetchFavicon(url) {
     const response = await axios.get(url, { timeout: 5000 });
     const html = response.data;
 
+    if (typeof html !== "string") {
+      return null;
+    }
+
     const iconMatch = html.match(
       /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i
     );
