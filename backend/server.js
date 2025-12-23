@@ -50,7 +50,7 @@ async function fetchFavicon(url) {
     const response = await axios.get(url, { timeout: 5000 });
     const html = response.data;
 
-    if (typeof html !== "string") {
+    if (!html || typeof html !== "string") {
       return null;
     }
 
@@ -79,7 +79,7 @@ async function fetchFavicon(url) {
       return null;
     }
   } catch (error) {
-    console.error("Error fetching favicon:", error.message);
+    console.error(`Error fetching favicon for ${url}:`, error.message);
     return null;
   }
 }
