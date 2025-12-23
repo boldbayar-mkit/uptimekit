@@ -111,7 +111,7 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
   }
 
   // Auto-detect type from URL only if the user selected http (or didn't select type)
-  console.log("Initial type:", type);
+  console.log("Initial type:============================================================================================", type);
   if (type === "http") {
     if (url.toLowerCase().startsWith("https://")) {
       type = "https";
@@ -122,7 +122,7 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
 
   // Get the authenticated user's ID from JWT token
   const createdBy = req.user ? req.user.id : null;
-  console.log("Creating monitor of type:", type);
+  console.log("Creating monitor of type:============================================================================================", type);
   addMonitor(name, url, type, createdBy, (err, id) => {
     if (err) {
       console.error("Error adding monitor:", err.message);
