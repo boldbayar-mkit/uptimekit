@@ -105,36 +105,39 @@ app.get("/api/monitors", authenticateJWT, (req, res) => {
 });
 
 app.post("/api/monitors", authenticateJWT, async (req, res) => {
-  let { name, url, type = "http" } = req.body;
-  if (!name || !url) {
-    return res.status(400).json({ error: "Name and URL are required" });
+  let { name, url, type } = req.body;
+  if (!name || !url || !type) {
+    return res.status(400).json({ error: "Name, URL and Type are required" });
   }
 
   // Auto-detect type from URL only if the user selected http (or didn't select type)
-  console.log("Initial type:============================================================================================", type);
-  if (type === "http") {
-    if (url.toLowerCase().startsWith("https://")) {
-      type = "https";
-    } else if (url.toLowerCase().startsWith("http://")) {
-      type = "http";
-    }
-  }
+  console.log(
+    `[DEBUG] Received addMonitor request. Name: ${name}, URL: ${url}, Type: ${type}`
+  );
+
+  // if (type == "http") {
+  //   if (url.toLowerCase().startsWith("https://")) {
+  //     type = "https";
+  //     console.log(`[DEBUG] Auto-detected type changed to: ${type}`);
+  //   }
+  // }
 
   // Get the authenticated user's ID from JWT token
   const createdBy = req.user ? req.user.id : null;
-  console.log("Creating monitor of type:============================================================================================", type);
+  console.log(`[DEBUG] Calling addMonitor with Type: ${type}`);
+
   addMonitor(name, url, type, createdBy, (err, id) => {
     if (err) {
-      console.error("Error adding monitor:", err.message);
+      console.error("[DEBUG] Error in addMonitor callback:", err.message);
       if (err.message && err.message.includes("UNIQUE constraint failed")) {
-        return res
-          .status(400)
-          .json({ error: "A monitor with this URL and type already exists" });
+        return res.status(400).json({
+          error: `A monitor with this URL and type (${type}) already exists`,
+        });
       }
       return res.status(500).json({ error: "Failed to add monitor" });
     }
 
-    if (type === "http" || type === "https") {
+    if (type == "http") {
       fetchFavicon(url)
         .then((favicon) => {
           if (favicon) {
@@ -149,8 +152,8 @@ app.post("/api/monitors", authenticateJWT, async (req, res) => {
           console.error("Error fetching favicon:", err.message);
         });
 
-      if (type === "https") {
-        // Check SSL immediately
+      if (url.toLowerCase().startsWith("https://")) {
+        console.log("[DEBUG] Triggering SSL check for new HTTPS monitor");
         checkSSL({ id, url, type });
       }
     }
@@ -232,7 +235,7 @@ app.put("/api/monitors/:id", (req, res) => {
     res.json({ message: "Monitor updated successfully" });
 
     // Trigger checks if updated
-    if (type === "https") {
+    if (url.toLowerCase().startsWith("https://")) {
       checkSSL({ id, url, type });
     }
   });
@@ -433,8 +436,6 @@ async function checkUptime(monitor) {
 }
 
 async function checkSSL(monitor) {
-  if (monitor.type !== "https") return;
-
   try {
     let hostname = monitor.url;
     if (hostname.startsWith("http://") || hostname.startsWith("https://")) {
@@ -476,7 +477,7 @@ cron.schedule("0 */12 * * *", () => {
   getAllMonitors((err, monitors) => {
     if (err) return;
     monitors.forEach((monitor) => {
-      if (!monitor.paused && monitor.type === "https") {
+      if (!monitor.paused && monitor.url.toLowerCase().startsWith("https://")) {
         checkSSL(monitor);
       }
     });

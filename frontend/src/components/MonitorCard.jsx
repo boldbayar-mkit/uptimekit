@@ -1,50 +1,86 @@
-import { CheckCircle, AlertTriangle, XCircle, Clock, ExternalLink, Trash2, Activity, MoreVertical, Pause, Play, Edit, TrendingUp, History, Globe, Network, Wifi, GripVertical, Shield, ShieldCheck, ShieldAlert, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardHeader } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Progress } from './ui/progress';
-import MonitorHistoryDialog from './MonitorHistoryDialog';
-import EditMonitorDialog from './EditMonitorDialog';
-import DeleteMonitorDialog from './DeleteMonitorDialog';
-import DowntimeDialog from './DowntimeDialog';
-import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
-import axios from 'axios';
-import { parseUTC } from '../lib/timezone';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import {
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  ExternalLink,
+  Trash2,
+  Activity,
+  MoreVertical,
+  Pause,
+  Play,
+  Edit,
+  TrendingUp,
+  History,
+  Globe,
+  Network,
+  Wifi,
+  GripVertical,
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+  RefreshCw,
+} from "lucide-react";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Progress } from "./ui/progress";
+import MonitorHistoryDialog from "./MonitorHistoryDialog";
+import EditMonitorDialog from "./EditMonitorDialog";
+import DeleteMonitorDialog from "./DeleteMonitorDialog";
+import DowntimeDialog from "./DowntimeDialog";
+import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import axios from "axios";
+import { parseUTC } from "../lib/timezone";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const getStatusInfo = (status) => {
   switch (status) {
-    case 'up':
+    case "up":
       return {
-        bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
-        textColor: 'text-emerald-600 dark:text-emerald-400',
+        bgColor: "bg-emerald-500/10 dark:bg-emerald-500/20",
+        textColor: "text-emerald-600 dark:text-emerald-400",
         icon: CheckCircle,
-        label: 'Operational'
+        label: "Operational",
       };
-    case 'slow':
+    case "slow":
       return {
-        bgColor: 'bg-amber-500/10 dark:bg-amber-500/20',
-        textColor: 'text-amber-600 dark:text-amber-400',
+        bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
+        textColor: "text-amber-600 dark:text-amber-400",
         icon: AlertTriangle,
-        label: 'Degraded'
+        label: "Degraded",
       };
-    case 'down':
+    case "down":
       return {
-        bgColor: 'bg-red-500/10 dark:bg-red-500/20',
-        textColor: 'text-red-600 dark:text-red-400',
+        bgColor: "bg-red-500/10 dark:bg-red-500/20",
+        textColor: "text-red-600 dark:text-red-400",
         icon: XCircle,
-        label: 'Down'
+        label: "Down",
       };
     default:
       return {
-        bgColor: 'bg-blue-500/10 dark:bg-blue-500/20',
-        textColor: 'text-blue-600 dark:text-blue-400 animate-pulse',
+        bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
+        textColor: "text-blue-600 dark:text-blue-400 animate-pulse",
         icon: Clock,
-        label: 'Collecting data...'
+        label: "Collecting data...",
       };
   }
 };
@@ -53,41 +89,41 @@ const getStatusInfo = (status) => {
 const getSSLStatusInfo = (daysRemaining, isValid) => {
   if (!isValid || daysRemaining <= 0) {
     return {
-      status: 'expired',
-      label: 'Expired',
+      status: "expired",
+      label: "Expired",
       icon: ShieldAlert,
-      bgColor: 'bg-red-500/10 dark:bg-red-500/20',
-      textColor: 'text-red-600 dark:text-red-400',
-      badgeColor: 'bg-red-500 text-white'
+      bgColor: "bg-red-500/10 dark:bg-red-500/20",
+      textColor: "text-red-600 dark:text-red-400",
+      badgeColor: "bg-red-500 text-white",
     };
   } else if (daysRemaining < 30) {
     return {
-      status: 'expiring-soon',
-      label: 'Expiring Soon',
+      status: "expiring-soon",
+      label: "Expiring Soon",
       icon: ShieldAlert,
-      bgColor: 'bg-amber-500/10 dark:bg-amber-500/20',
-      textColor: 'text-amber-600 dark:text-amber-400',
-      badgeColor: 'bg-amber-500 text-white'
+      bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
+      textColor: "text-amber-600 dark:text-amber-400",
+      badgeColor: "bg-amber-500 text-white",
     };
   } else {
     return {
-      status: 'valid',
-      label: 'Valid',
+      status: "valid",
+      label: "Valid",
       icon: ShieldCheck,
-      bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
-      textColor: 'text-emerald-600 dark:text-emerald-400',
-      badgeColor: 'bg-emerald-500 text-white'
+      bgColor: "bg-emerald-500/10 dark:bg-emerald-500/20",
+      textColor: "text-emerald-600 dark:text-emerald-400",
+      badgeColor: "bg-emerald-500 text-white",
     };
   }
 };
 
 const getDaysRemainingColor = (daysRemaining, isValid) => {
   if (!isValid || daysRemaining <= 0) {
-    return 'text-red-600 dark:text-red-400 font-semibold';
+    return "text-red-600 dark:text-red-400 font-semibold";
   } else if (daysRemaining < 30) {
-    return 'text-amber-600 dark:text-amber-400 font-semibold';
+    return "text-amber-600 dark:text-amber-400 font-semibold";
   } else {
-    return 'text-emerald-600 dark:text-emerald-400 font-semibold';
+    return "text-emerald-600 dark:text-emerald-400 font-semibold";
   }
 };
 
@@ -99,39 +135,49 @@ const MonitorCard = ({ monitor, onDelete }) => {
   const queryClient = useQueryClient();
 
   const { data: uptimeData, isLoading: uptimeLoading } = useQuery({
-    queryKey: ['monitor-uptime', monitor.id],
-    queryFn: () => axios.get(`/api/monitors/${monitor.id}/uptime`).then(res => res.data),
+    queryKey: ["monitor-uptime", monitor.id],
+    queryFn: () =>
+      axios.get(`/api/monitors/${monitor.id}/uptime`).then((res) => res.data),
     refetchInterval: 30000,
   });
 
   const uptimePercentage = uptimeData?.uptime;
 
   const { data: uptimeChartData = [] } = useQuery({
-    queryKey: ['monitor-uptime-chart', monitor.id],
-    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/uptime`).then(res =>
-      res.data.map(item => ({
-        ...item,
-        time: parseUTC(item.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-      }))
-    ),
+    queryKey: ["monitor-uptime-chart", monitor.id],
+    queryFn: () =>
+      axios.get(`/api/monitors/${monitor.id}/chart/uptime`).then((res) =>
+        res.data.map((item) => ({
+          ...item,
+          time: parseUTC(item.time).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }))
+      ),
     refetchInterval: 60000,
   });
 
   const { data: responseTimeChartData = [] } = useQuery({
-    queryKey: ['monitor-response-time-chart', monitor.id],
-    queryFn: () => axios.get(`/api/monitors/${monitor.id}/chart/response-time`).then(res =>
-      res.data.map(item => ({
-        ...item,
-        time: parseUTC(item.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-      }))
-    ),
+    queryKey: ["monitor-response-time-chart", monitor.id],
+    queryFn: () =>
+      axios.get(`/api/monitors/${monitor.id}/chart/response-time`).then((res) =>
+        res.data.map((item) => ({
+          ...item,
+          time: parseUTC(item.time).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }))
+      ),
     refetchInterval: 60000,
   });
 
   const pauseMutation = useMutation({
-    mutationFn: (paused) => axios.patch(`/api/monitors/${monitor.id}/pause`, { paused }),
+    mutationFn: (paused) =>
+      axios.patch(`/api/monitors/${monitor.id}/pause`, { paused }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitors'] });
+      queryClient.invalidateQueries({ queryKey: ["monitors"] });
     },
   });
 
@@ -139,45 +185,66 @@ const MonitorCard = ({ monitor, onDelete }) => {
     pauseMutation.mutate(!monitor.paused);
   };
 
-  const { bgColor, textColor, icon: StatusIcon, label } = getStatusInfo(monitor.status);
+  const {
+    bgColor,
+    textColor,
+    icon: StatusIcon,
+    label,
+  } = getStatusInfo(monitor.status);
 
   const getResponseTimeColor = (time) => {
-    if (time < 500) return 'text-emerald-600 dark:text-emerald-400';
-    if (time < 2000) return 'text-amber-600 dark:text-amber-400';
-    return 'text-red-600 dark:text-red-400';
+    if (time < 500) return "text-emerald-600 dark:text-emerald-400";
+    if (time < 2000) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
   };
 
   const truncateText = (text, maxWords = 8) => {
     const words = text.split(/\s+/);
     if (words.length > maxWords) {
-      return words.slice(0, maxWords).join(' ') + '...';
+      return words.slice(0, maxWords).join(" ") + "...";
     }
     return text;
   };
 
   return (
-    <Card className={`group relative hover:shadow-xl transition-all duration-300 border-l-4 ${monitor.paused === 1 ? 'opacity-60' : ''}`} style={{ borderLeftColor: monitor.status === 'up' ? '#10b981' : monitor.status === 'slow' ? '#f59e0b' : '#ef4444' }}>
+    <Card
+      className={`group relative hover:shadow-xl transition-all duration-300 border-l-4 ${
+        monitor.paused === 1 ? "opacity-60" : ""
+      }`}
+      style={{
+        borderLeftColor:
+          monitor.status === "up"
+            ? "#10b981"
+            : monitor.status === "slow"
+            ? "#f59e0b"
+            : "#ef4444",
+      }}
+    >
       <CardHeader className="p-4 pb-0">
         <div className="flex items-start justify-between w-full">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              {monitor.favicon && monitor.type === 'http' && (
+              {monitor.favicon && monitor.type === "http" && (
                 <img
                   src={monitor.favicon}
                   alt="Favicon"
                   className="h-6 w-6 rounded-sm flex-shrink-0"
-                  onError={(e) => e.target.style.display = 'none'}
+                  onError={(e) => (e.target.style.display = "none")}
                 />
               )}
               <Activity className="h-4 w-4 text-primary flex-shrink-0" />
-              <h3 className="font-semibold text-lg truncate">{truncateText(monitor.name)}</h3>
+              <h3 className="font-semibold text-lg truncate">
+                {truncateText(monitor.name)}
+              </h3>
               <Badge variant="outline" className="flex-shrink-0 gap-1">
-                {(monitor.type === 'dns' || monitor.type?.toLowerCase() === 'dns') ? (
+                {monitor.type === "dns" ||
+                monitor.type?.toLowerCase() === "dns" ? (
                   <>
                     <Network className="h-3 w-3" />
                     DNS
                   </>
-                ) : (monitor.type === 'icmp' || monitor.type?.toLowerCase() === 'icmp') ? (
+                ) : monitor.type === "icmp" ||
+                  monitor.type?.toLowerCase() === "icmp" ? (
                   <>
                     <Wifi className="h-3 w-3" />
                     ICMP
@@ -190,7 +257,12 @@ const MonitorCard = ({ monitor, onDelete }) => {
                 )}
               </Badge>
               {monitor.paused === 1 && (
-                <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 ml-auto flex-shrink-0">Paused</Badge>
+                <Badge
+                  variant="secondary"
+                  className="bg-amber-500/20 text-amber-700 dark:text-amber-300 ml-auto flex-shrink-0"
+                >
+                  Paused
+                </Badge>
               )}
             </div>
             <Tooltip>
@@ -214,7 +286,11 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span data-swapy-handle className="drag-handle text-muted-foreground opacity-60 hover:opacity-100 transition" aria-hidden>
+                <span
+                  data-swapy-handle
+                  className="drag-handle text-muted-foreground opacity-60 hover:opacity-100 transition"
+                  aria-hidden
+                >
                   <GripVertical className="h-4 w-4" />
                 </span>
               </TooltipTrigger>
@@ -231,20 +307,32 @@ const MonitorCard = ({ monitor, onDelete }) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setHistoryOpen(true)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => setHistoryOpen(true)}
+                >
                   <History className="h-4 w-4 mr-2" />
                   View History
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setDowntimeOpen(true)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => setDowntimeOpen(true)}
+                >
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   View Downtime
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setEditOpen(true)}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => setEditOpen(true)}
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Monitor
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer" onClick={handleTogglePause}>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={handleTogglePause}
+                >
                   {monitor.paused ? (
                     <>
                       <Play className="h-4 w-4 mr-2" />
@@ -271,13 +359,17 @@ const MonitorCard = ({ monitor, onDelete }) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-3">
-        <div className={`flex items-center justify-between p-3 rounded-lg ${bgColor}`}>
+        <div
+          className={`flex items-center justify-between p-3 rounded-lg ${bgColor}`}
+        >
           <div className="flex items-center gap-2">
             <StatusIcon className={`h-5 w-5 ${textColor}`} />
             <span className={`font-semibold ${textColor}`}>{label}</span>
           </div>
           <Badge className={`${bgColor} ${textColor} border-0`}>
-            {monitor.status === 'unknown' ? '⏳ WAITING' : monitor.status.toUpperCase()}
+            {monitor.status === "unknown"
+              ? "⏳ WAITING"
+              : monitor.status.toUpperCase()}
           </Badge>
         </div>
 
@@ -285,32 +377,50 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground font-medium">Uptime</span>
             {uptimeLoading ? (
-              <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
+              <span className="text-xs text-muted-foreground animate-pulse">
+                Loading...
+              </span>
             ) : uptimePercentage !== null ? (
-              <span className={`font-bold ${uptimePercentage >= 99 ? 'text-emerald-600 dark:text-emerald-400' : uptimePercentage >= 95 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span
+                className={`font-bold ${
+                  uptimePercentage >= 99
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : uptimePercentage >= 95
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
                 {uptimePercentage}%
               </span>
             ) : (
               <span className="text-xs text-muted-foreground">No data</span>
             )}
           </div>
-          <Progress
-            value={uptimePercentage || 0}
-            className="h-2"
-          />
+          <Progress value={uptimePercentage || 0} className="h-2" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Response Time</p>
-            <p className={`text-2xl font-bold ${getResponseTimeColor(monitor.response_time)}`}>
-              {monitor.response_time}<span className="text-sm ml-1">ms</span>
+            <p className="text-xs text-muted-foreground font-medium">
+              Response Time
+            </p>
+            <p
+              className={`text-2xl font-bold ${getResponseTimeColor(
+                monitor.response_time
+              )}`}
+            >
+              {monitor.response_time}
+              <span className="text-sm ml-1">ms</span>
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Last Check</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Last Check
+            </p>
             <p className="text-sm font-semibold text-foreground">
-              {formatDistanceToNow(parseUTC(monitor.last_checked), { addSuffix: true })}
+              {formatDistanceToNow(parseUTC(monitor.last_checked), {
+                addSuffix: true,
+              })}
             </p>
           </div>
         </div>
@@ -318,37 +428,54 @@ const MonitorCard = ({ monitor, onDelete }) => {
         {/* Average Stats */}
         <div className="grid grid-cols-3 gap-3 p-3 bg-muted/20 rounded-lg">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground font-medium">Avg Response</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Avg Response
+            </p>
             <p className="text-sm font-bold text-primary mt-1">
               {responseTimeChartData.length > 0
-                ? Math.round(responseTimeChartData.reduce((acc, d) => acc + d.avgResponse, 0) / responseTimeChartData.length)
-                : monitor.response_time
-              }ms
+                ? Math.round(
+                    responseTimeChartData.reduce(
+                      (acc, d) => acc + d.avgResponse,
+                      0
+                    ) / responseTimeChartData.length
+                  )
+                : monitor.response_time}
+              ms
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground font-medium">Min Response</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Min Response
+            </p>
             <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
               {responseTimeChartData.length > 0
-                ? Math.min(...responseTimeChartData.map(d => d.avgResponse)).toFixed(0)
-                : monitor.response_time
-              }ms
+                ? Math.min(
+                    ...responseTimeChartData.map((d) => d.avgResponse)
+                  ).toFixed(0)
+                : monitor.response_time}
+              ms
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground font-medium">Max Response</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Max Response
+            </p>
             <p className="text-sm font-bold text-red-600 dark:text-red-400 mt-1">
               {responseTimeChartData.length > 0
-                ? Math.max(...responseTimeChartData.map(d => d.avgResponse)).toFixed(0)
-                : monitor.response_time
-              }ms
+                ? Math.max(
+                    ...responseTimeChartData.map((d) => d.avgResponse)
+                  ).toFixed(0)
+                : monitor.response_time}
+              ms
             </p>
           </div>
         </div>
 
         {/* Uptime Chart */}
         <div className="pt-4 border-t border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-3">24-Hour Uptime</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-3">
+            24-Hour Uptime
+          </p>
           {uptimeChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart
@@ -356,7 +483,13 @@ const MonitorCard = ({ monitor, onDelete }) => {
                 margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
               >
                 <defs>
-                  <linearGradient id={`uptimeGradient-${monitor.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient
+                    id={`uptimeGradient-${monitor.id}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
@@ -377,9 +510,9 @@ const MonitorCard = ({ monitor, onDelete }) => {
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
+                    backgroundColor: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
                   }}
                   formatter={(value) => `${value.toFixed(1)}%`}
                 />
@@ -404,21 +537,29 @@ const MonitorCard = ({ monitor, onDelete }) => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-muted-foreground" />
-              <p className="text-xs font-semibold text-muted-foreground">SSL Certificate Information</p>
+              <p className="text-xs font-semibold text-muted-foreground">
+                SSL Certificate Information
+              </p>
             </div>
-            {monitor.type === 'https' && monitor.sslCertificate?.status === 'expiring-soon' && (
-              <Button size="sm" variant="outline" className="h-6 px-2 text-xs">
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Renew SSL
-              </Button>
-            )}
+            {monitor.url.toLowerCase().startsWith("https://") &&
+              monitor.sslCertificate?.status === "expiring-soon" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Renew SSL
+                </Button>
+              )}
           </div>
 
-          {monitor.type === 'https' && monitor.sslCertificate ? (
+          {monitor.url.toLowerCase().startsWith("https://") &&
+          monitor.sslCertificate ? (
             <div className="bg-muted/30 rounded-lg p-4 space-y-3">
               {(() => {
                 // Hide SSL info for API endpoints
-                if (monitor.url.toLowerCase().includes('api/')) {
+                if (monitor.url.toLowerCase().includes("api/")) {
                   return (
                     <div className="text-center text-sm text-muted-foreground py-2">
                       SSL details hidden for API endpoints
@@ -439,7 +580,10 @@ const MonitorCard = ({ monitor, onDelete }) => {
                         <StatusIcon className="w-4 h-4" />
                         <span className="text-sm font-medium">SSL Status:</span>
                       </div>
-                      <Badge variant="secondary" className={sslStatus.badgeColor}>
+                      <Badge
+                        variant="secondary"
+                        className={sslStatus.badgeColor}
+                      >
                         {sslStatus.label}
                       </Badge>
                     </div>
@@ -447,22 +591,36 @@ const MonitorCard = ({ monitor, onDelete }) => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Issuer:</span>
-                        <span className="font-medium">{sslCert.issuer || 'Unknown'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Domain:</span>
-                        <span className="font-medium text-right">{sslCert.domain || 'Unknown'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Issued Date:</span>
                         <span className="font-medium">
-                          {sslCert.issuedDate ? new Date(sslCert.issuedDate).toLocaleDateString() : 'Unknown'}
+                          {sslCert.issuer || "Unknown"}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Expiration Date:</span>
+                        <span className="text-muted-foreground">Domain:</span>
+                        <span className="font-medium text-right">
+                          {sslCert.domain || "Unknown"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Issued Date:
+                        </span>
                         <span className="font-medium">
-                          {sslCert.expirationDate ? new Date(sslCert.expirationDate).toLocaleDateString() : 'Unknown'}
+                          {sslCert.issuedDate
+                            ? new Date(sslCert.issuedDate).toLocaleDateString()
+                            : "Unknown"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Expiration Date:
+                        </span>
+                        <span className="font-medium">
+                          {sslCert.expirationDate
+                            ? new Date(
+                                sslCert.expirationDate
+                              ).toLocaleDateString()
+                            : "Unknown"}
                         </span>
                       </div>
                     </div>
@@ -470,15 +628,31 @@ const MonitorCard = ({ monitor, onDelete }) => {
                     <div className="pt-2 border-t border-border/50">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-sm text-muted-foreground">Days Remaining: </span>
-                          <span className={`text-lg ${getDaysRemainingColor(daysRemaining, isValid)}`}>
-                            {daysRemaining > 0 ? `${daysRemaining} days` : 'Expired'}
+                          <span className="text-sm text-muted-foreground">
+                            Days Remaining:{" "}
+                          </span>
+                          <span
+                            className={`text-lg ${getDaysRemainingColor(
+                              daysRemaining,
+                              isValid
+                            )}`}
+                          >
+                            {daysRemaining > 0
+                              ? `${daysRemaining} days`
+                              : "Expired"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Auto-Renewal:</span>
-                          <Badge variant={sslCert.autoRenewal ? 'default' : 'secondary'} className="text-xs">
-                            {sslCert.autoRenewal ? 'Enabled' : 'Disabled'}
+                          <span className="text-sm text-muted-foreground">
+                            Auto-Renewal:
+                          </span>
+                          <Badge
+                            variant={
+                              sslCert.autoRenewal ? "default" : "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {sslCert.autoRenewal ? "Enabled" : "Disabled"}
                           </Badge>
                         </div>
                       </div>
@@ -487,23 +661,43 @@ const MonitorCard = ({ monitor, onDelete }) => {
                 );
               })()}
             </div>
-          ) : monitor.type === 'https' ? (
+          ) : monitor.type === "https" ? (
             <div className="bg-muted/30 rounded-lg p-8 text-center">
               <ShieldAlert className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">SSL certificate information not available</p>
+              <p className="text-sm text-muted-foreground">
+                SSL certificate information not available
+              </p>
             </div>
           ) : (
             <div className="bg-muted/30 rounded-lg p-8 text-center">
               <Shield className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">SSL certificate not available for HTTP monitors</p>
+              <p className="text-sm text-muted-foreground">
+                SSL certificate not available for HTTP monitors
+              </p>
             </div>
           )}
         </div>
       </CardContent>
-      <EditMonitorDialog open={editOpen} onOpenChange={setEditOpen} monitor={monitor} />
-      <MonitorHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} monitor={monitor} />
-      <DeleteMonitorDialog open={deleteOpen} onOpenChange={setDeleteOpen} monitor={monitor} />
-      <DowntimeDialog monitorId={monitor.id} isOpen={downtimeOpen} onClose={setDowntimeOpen} />
+      <EditMonitorDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        monitor={monitor}
+      />
+      <MonitorHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        monitor={monitor}
+      />
+      <DeleteMonitorDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        monitor={monitor}
+      />
+      <DowntimeDialog
+        monitorId={monitor.id}
+        isOpen={downtimeOpen}
+        onClose={setDowntimeOpen}
+      />
     </Card>
   );
 };
